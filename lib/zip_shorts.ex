@@ -10,11 +10,11 @@ defmodule ZipShorts do
   ## Examples
 
       iex> [%{path: "examples/hello_world.txt", source: ["Hello world!"]}]
-      ...> |> ZipShorts.Zip.stream()
+      ...> |> ZipShorts.stream_zip()
       ...> |> ZipShorts.write_zip("example.zip")
 
       iex> [%{path: "examples/hello_world.txt", source: ["Hello world!"]}]
-      ...> |> ZipShorts.Zip.stream()
+      ...> |> ZipShorts.stream_zip()
       ...> |> ZipShorts.write_zip("example.zip", segment: true)
   """
   def write_zip(entries, path, opts \\ []) do
@@ -85,15 +85,15 @@ defmodule ZipShorts do
   ## Examples
 
       iex> [%{path: "examples/hello_world.txt", source: [String.duplicate("A", 5_242_880)]}]
-      ...> |> ZipShorts.Zip.stream()
+      ...> |> ZipShorts.stream_zip()
       ...> |> ZipShorts.S3.multipart_upload("myapp-bucket", "hello.txt", [s3: [access_key_id: "XXX", secret_access_key: "XXX"]])
 
       iex> [%{path: "zip_shorts/guides/hello_world.txt", source: ["Hello world!"]}]
-      ...> |> ZipShorts.Zip.stream()
+      ...> |> ZipShorts.stream_zip()
       ...> |> ZipShorts.S3.segment_upload("myapp-bucket", "hello.txt", [s3: [access_key_id: "XXX", secret_access_key: "XXX"]])
 
       iex> [%{path: "zip_shorts/guides/hello_world.txt", source: ["Hello world!"]}]
-      ...> |> ZipShorts.Zip.stream()
+      ...> |> ZipShorts.stream_zip()
       ...> |> ZipShorts.S3.upload("myapp-bucket", "hello.txt", [s3: [access_key_id: "XXX", secret_access_key: "XXX"]])
   """
   def upload_file(entries, bucket, object, opts \\ []) do
