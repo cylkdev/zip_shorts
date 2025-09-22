@@ -1,7 +1,6 @@
 defmodule ZipShorts do
   @best_compression :best_compression
   @sixty_four_mebibytes 64 * 1024 * 1024
-
   @default_gzip_options [level: @best_compression]
 
   @doc """
@@ -9,15 +8,12 @@ defmodule ZipShorts do
 
   ## Examples
 
-      iex> [%{path: "examples/hello_world.txt", source: ["Hello world!"]}]
-      ...> |> ZipShorts.stream_zip()
-      ...> |> ZipShorts.write_zip("example.zip")
+      iex> ZipShorts.zip_write([%{path: "examples/hello_world.txt", source: ["Hello world!"]}], "example.zip")
 
-      iex> [%{path: "examples/hello_world.txt", source: ["Hello world!"]}]
-      ...> |> ZipShorts.stream_zip()
-      ...> |> ZipShorts.write_zip("example.zip", segment: true)
+      iex> content = 1_024 * 1_024 |> :crypto.strong_rand_bytes() |> Base.encode32()
+      ...> ZipShorts.zip_write([%{path: "examples/hello_world.txt", source: [content]}], "example_10mb.zip", segment: true, max_bytes_per_chunk: 1_024)
   """
-  def write_zip(entries, path, opts \\ []) do
+  def zip_write(entries, path, opts \\ []) do
     if opts[:segment] do
       entries
       |> stream_zip(opts)
@@ -57,7 +53,7 @@ defmodule ZipShorts do
     |> Stream.with_index()
     |> Stream.map(fn {chunk, idx} ->
       sid = idx |> to_string() |> String.pad_leading(5, "0")
-      dest = "#{path}.#{sid}"
+      dest = "#{abs_path}.#{sid}"
       {chunk, dest}
     end)
     |> Task.async_stream(
@@ -84,19 +80,13 @@ defmodule ZipShorts do
 
   ## Examples
 
-      iex> [%{path: "examples/hello_world.txt", source: [String.duplicate("A", 5_242_880)]}]
-      ...> |> ZipShorts.stream_zip()
-      ...> |> ZipShorts.S3.multipart_upload("myapp-bucket", "hello.txt", [s3: [access_key_id: "XXX", secret_access_key: "XXX"]])
+      iex> ZipShorts.zip_upload([%{path: "examples/hello_world.txt", source: [String.duplicate("A", 5_242_880)]}], "requis-developer-sandbox", "example.zip", [s3: [access_key_id: "XXX", secret_access_key: "XXX"]])
 
-      iex> [%{path: "zip_shorts/guides/hello_world.txt", source: ["Hello world!"]}]
-      ...> |> ZipShorts.stream_zip()
-      ...> |> ZipShorts.S3.segment_upload("myapp-bucket", "hello.txt", [s3: [access_key_id: "XXX", secret_access_key: "XXX"]])
+      iex> ZipShorts.zip_upload([%{path: "zip_shorts/guides/hello_world.txt", source: ["Hello world!"]}], "myapp-bucket", "example.zip", [s3: [access_key_id: "XXX", secret_access_key: "XXX"]])
 
-      iex> [%{path: "zip_shorts/guides/hello_world.txt", source: ["Hello world!"]}]
-      ...> |> ZipShorts.stream_zip()
-      ...> |> ZipShorts.S3.upload("myapp-bucket", "hello.txt", [s3: [access_key_id: "XXX", secret_access_key: "XXX"]])
+      iex> ZipShorts.zip_upload([%{path: "zip_shorts/guides/hello_world.txt", source: ["Hello world!"]}], "myapp-bucket", "example.zip", [s3: [access_key_id: "XXX", secret_access_key: "XXX"]])
   """
-  def upload_file(entries, bucket, object, opts \\ []) do
+  def zip_upload(entries, bucket, object, opts \\ []) do
     cond do
       opts[:multipart] === true and opts[:segment] === true ->
         raise "options :multipart and :segment cannot both be true, must choose one. got: #{inspect(opts)}"
@@ -247,6 +237,6 @@ defmodule ZipShorts do
 
   defp to_entry(opts) do
     params = Map.new(opts)
-    Zstream.entry(params.path, params.source, params.options)
+    Zstream.entry(params.path, params.source, params[:options] || [])
   end
 end
