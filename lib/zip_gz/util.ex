@@ -1,49 +1,42 @@
 defmodule ZipGz.Util do
   @moduledoc false
 
-  defguardp is_pos_integer(t) when is_integer(t) and t > 0
-  defguardp is_non_neg_integer(t) when is_integer(t) and t >= 0
+  @doc """
+  Enum.to_list(ZipGz.Util.content_byte_stream("ABCDE", 2))
+  Enum.to_list(ZipGz.Util.content_byte_stream(["A", "B", "CDE"], 2))
+  """
+  def content_byte_stream(bin, size) when is_binary(bin) do
+    bin
+    |> split(0, size)
+    |> Tuple.to_list()
+    |> content_byte_stream(size)
+  end
 
-  def content_byte_stream(bin, size) when is_binary(bin) and is_pos_integer(size) do
-    Stream.resource(
-      fn -> bin end,
+  def content_byte_stream(enum, size) do
+    Stream.transform(
+      enum,
+      fn -> {[], 0} end,
       fn
-        <<>> ->
-          {:halt, nil}
+        data, {buf, buf_size} when buf_size >= size ->
+          combined = combine(buf)
+          {bin, rest} = split(combined, 0, size)
+          {[bin], {[data, rest], byte_size(rest) + byte_size(data)}}
 
-        bin ->
-          case chunk_bytes(bin, size) do
-            {[], rest} -> {[rest], <<>>}
-            {chunks, rest} -> {chunks, rest}
-          end
+        data, {buf, buf_size} ->
+          {[], {[data | buf], buf_size + byte_size(data)}}
+
+      end,
+      fn {buf, _buf_size} ->
+        combined = combine(buf)
+        {bin, rest} = split(combined, 0, size)
+        {[bin, rest], nil}
       end,
       fn _ -> :ok end
     )
   end
 
-  def content_byte_stream(enum, size) when is_pos_integer(size) do
-    Stream.transform(
-      enum,
-      fn -> <<>> end,
-      fn
-        iodata, <<>> ->
-          bin = IO.iodata_to_binary(iodata)
-          chunk_bytes(bin, size)
-
-        bin, buf when is_binary(bin) ->
-          combined = <<buf::binary, bin::binary>>
-          chunk_bytes(combined, size)
-
-        iodata, buf ->
-          combined = IO.iodata_to_binary([buf, iodata])
-          chunk_bytes(combined, size)
-      end,
-      fn
-        <<>> -> {[], <<>>}
-        rest -> {[rest], <<>>}
-      end,
-      fn _ -> :ok end
-    )
+  defp combine(buf) do
+    buf |> Enum.reverse() |> :erlang.iolist_to_binary()
   end
 
   @doc """
@@ -57,7 +50,7 @@ defmodule ZipGz.Util do
       iex> ElixirUtils.Binary.chunk_bytes("a", 2)
       {[], "a"}
   """
-  def chunk_bytes(bin, size) when is_binary(bin) and is_pos_integer(size) do
+  def chunk_bytes(bin, size) when is_binary(bin) do
     traverse(
       bin,
       size,
@@ -78,7 +71,7 @@ defmodule ZipGz.Util do
 
   It always returns `{emitted, rest_or_new_acc}` depending on `last_fun`.
   """
-  def traverse(bin, size, acc, reducer, last_fun) when is_binary(bin) and is_pos_integer(size) do
+  def traverse(bin, size, acc, reducer, last_fun) when is_binary(bin) do
     case split(bin, 0, size) do
       {fragment, <<>>} ->
         last_fun.(fragment, acc)
@@ -107,8 +100,7 @@ defmodule ZipGz.Util do
       iex> ElixirUtils.Binary.split("abc", 0, 3)
       {"abc", ""}
   """
-  def split(bin, start, length)
-      when is_binary(bin) and is_non_neg_integer(start) and is_pos_integer(length) do
+  def split(bin, start, length) when is_binary(bin) do
     total = byte_size(bin)
 
     if start >= total do
