@@ -2,34 +2,41 @@ defmodule ZipGz.Util do
   @moduledoc false
 
   @doc """
-  Enum.to_list(ZipGz.Util.content_byte_stream("ABCDE", 2))
-  Enum.to_list(ZipGz.Util.content_byte_stream(["A", "B", "CDE"], 2))
+
+  ### Examples
+
+      iex> "ABCDE" |> ZipGz.Util.byte_stream(2) |> Enum.to_list()
+      ["AB", "CD", "EF"
+
+      iex> ["A", "B", "CDE"] |> ZipGz.Util.byte_stream(2) |> Enum.to_list()
+      ["AB", "CD", "E"]
+
+      iex> ["A", "B", "CD"] |> ZipGz.Util.byte_stream(2) |> Enum.to_list()
+      ["AB", "CD"]
   """
-  def content_byte_stream(bin, size) when is_binary(bin) do
-    bin
-    |> split(0, size)
-    |> Tuple.to_list()
-    |> content_byte_stream(size)
+  def byte_stream(bin, size) when is_binary(bin) do
+    bin |> split(0, size) |> Tuple.to_list() |> byte_stream(size)
   end
 
-  def content_byte_stream(enum, size) do
-    Stream.transform(
-      enum,
+  def byte_stream(enum, size) when is_integer(size) and size > 0 do
+    enum
+    |> Stream.transform(
       fn -> {[], 0} end,
       fn
         data, {buf, buf_size} when buf_size >= size ->
-          combined = combine(buf)
-          {bin, rest} = split(combined, 0, size)
-          {[bin], {[data, rest], byte_size(rest) + byte_size(data)}}
+          case buf |> combine() |> split(0, size) do
+            {item, <<>>} -> {[item], {[data], byte_size(data)}}
+            {item, rest} -> {[item], {[data, rest], byte_size(rest) + byte_size(data)}}
+          end
 
         data, {buf, buf_size} ->
           {[], {[data | buf], buf_size + byte_size(data)}}
-
       end,
-      fn {buf, _buf_size} ->
-        combined = combine(buf)
-        {bin, rest} = split(combined, 0, size)
-        {[bin, rest], nil}
+      fn {buf, _} ->
+        case buf |> combine() |> split(0, size) do
+          {item, <<>>} -> {[item], nil}
+          {item, rest} -> {[item, rest], nil}
+        end
       end,
       fn _ -> :ok end
     )
@@ -51,7 +58,7 @@ defmodule ZipGz.Util do
       {[], "a"}
   """
   def chunk_bytes(bin, size) when is_binary(bin) do
-    traverse(
+    transform(
       bin,
       size,
       [],
@@ -61,7 +68,7 @@ defmodule ZipGz.Util do
   end
 
   @doc """
-  Traverses a binary, ensuring each fragment is at most the given size.
+  Transforms a binary, ensuring each fragment is at most the given size.
 
   - `bin` is the binary input
   - `size` is the max fragment size
@@ -71,14 +78,10 @@ defmodule ZipGz.Util do
 
   It always returns `{emitted, rest_or_new_acc}` depending on `last_fun`.
   """
-  def traverse(bin, size, acc, reducer, last_fun) when is_binary(bin) do
+  def transform(bin, size, acc, reducer, last_fun) when is_binary(bin) do
     case split(bin, 0, size) do
-      {fragment, <<>>} ->
-        last_fun.(fragment, acc)
-
-      {fragment, rest} ->
-        next_acc = reducer.(fragment, acc)
-        traverse(rest, size, next_acc, reducer, last_fun)
+      {fragment, <<>>} -> last_fun.(fragment, acc)
+      {fragment, rest} -> transform(rest, size, reducer.(fragment, acc), reducer, last_fun)
     end
   end
 
