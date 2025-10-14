@@ -1,5 +1,5 @@
 %{
-  "elixir_utils": {:git, "https://github.com/cylkdev/elixir_utils.git", "b0dcb2fe5b6485649eda2eee50958b1787ebddab", []},
+  "elixir_utils": {:git, "https://github.com/cylkdev/elixir_utils.git", "1cf047520a9a0503ee2ae871536e928953282586", []},
   "nimble_options": {:hex, :nimble_options, "1.1.1", "e3a492d54d85fc3fd7c5baf411d9d2852922f66e69476317787a7b2bb000a61b", [:mix], [], "hexpm", "821b2470ca9442c4b6984882fe9bb0389371b8ddec4d45a9504f00a66f650b44"},
   "stream_gzip": {:hex, :stream_gzip, "0.4.2", "838044dd31dcb15d0a29e1c80b82835c0e7fd5ab81baac328c84e0266c35b9d0", [:mix], [], "hexpm", "3657a5d68c6700b24160b793d74e039074b799abd30ba0727a0c2084a0d3e100"},
   "zstream": {:hex, :zstream, "0.6.7", "ae74c7544f4e0563ffbe71324bf1c9bbc0ab33bb580a0ae718da511fb8a5c9d6", [:mix], [], "hexpm", "48c43ae0f00cfcda1ccb69c1d044755663d43b2ee8a0a65763648bf2078d634d"},
